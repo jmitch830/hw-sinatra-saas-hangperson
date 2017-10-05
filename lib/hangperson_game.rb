@@ -1,119 +1,103 @@
 class HangpersonGame
-
-
-
   # add the necessary class methods, attributes, etc. here
-
   # to make the tests in spec/hangperson_game_spec.rb pass.
 
+  attr_accessor :guesses, :wrong_guesses, :word, :valid
 
+  ##
+  # Constructor
+  #
+  def initialize(word)
+    @word = word
+    @guesses = ''
+    @wrong_guesses = ''
+  end
+
+  ##
+  # Class Methods
+  #
 
   # Get a word from remote "random word" service
-
-
-
-  # def initialize()
-
-  # end
-
-  
-
-  attr_accessor :word
-
-  attr_accessor :guesses
-
-  attr_accessor :wrong_guesses
-
-  
-
-  def initialize(word)
-
-    @word = word
-
-    @guesses = ''
-
-    @wrong_guesses = ''
-
-    @current_status = :play
-
-  end
-
-
-
   def self.get_random_word
-
     require 'uri'
-
     require 'net/http'
-
     uri = URI('http://watchout4snakes.com/wo4snakes/Random/RandomWord')
-
-    Net::HTTP.post_form(uri ,{}).body
-
+    Net::HTTP.post_form(uri, {}).body
+  rescue
+    raise 'Could not get random word.'
   end
 
+  ##
+  # Instance Methods
+  #
 
-
-  def guess(new_guess)
-
-    
-
-    raise ArgumentError if new_guess.nil?
-
-    raise ArgumentError if new_guess.empty?
-
-    raise ArgumentError if new_guess =~ /[^a-zA-Z]+/
-
-    
-
-    new_guess.downcase!
-
-    
-
-    if (!@guesses.include? new_guess) && (!@wrong_guesses.include? new_guess)
-
-      if @word.include? new_guess
-
-        @guesses << new_guess
-
-        @current_status = :win if !word_with_guesses.include?('-') && @current_status != :lose
-
-        return true
-
-      else
-
-        @wrong_guesses << new_guess
-
-        @current_status = :lose if @wrong_guesses.length >= 7
-
-        return true
-
-      end
-
+  # validate the guess and then evaluate the letter guessed.
+  def guess(letter)
+    if valid_guess?(letter)
+      valid = true
+    else
+      valid = false
+      fail ArgumentError
     end
 
-    return false
+    # if user has already guessed letter, no need to check and duplicate value
+    return false if already_guessed?(letter)
 
-    
+    # check if the guess is correct or incorrect
+    check_guess(letter) if valid
 
+    # return true if guess is valid
+    true
   end
 
-  
-
-  def word_with_guesses
-
-    return @word.gsub(Regexp.new(@guesses.empty? ? '.' : '[^'+@guesses+']', Regexp::IGNORECASE) , '-')
-
+  # guess all the letters in the string
+  def guess_several_letters(letters)
+    letters.each { |letter| guess(letter) }
   end
 
-  
-
+  # return :lose, :win, :play based on the state of the word and number of guesses.
   def check_win_or_lose
-
-    return @current_status
-
+    return :lose if number_of_wrong_guesses >= 7
+    return :win unless word_with_guesses.include?('-')
+    :play
   end
 
-  
+  # build the word showing only the correctly guessed letters
+  def word_with_guesses
+    result = ''
 
+    word.split('').each do |letter|
+      if guesses.include?(letter)
+        result << letter
+      else
+        result << '-'
+      end
+    end
+
+    result
+  end
+
+  private
+
+  # check if a letter has already been guessed
+  def already_guessed?(letter)
+    (guesses + wrong_guesses).include?(letter)
+  end
+
+  # check if the guess is correct or incorrect and append to the appropriate list.
+  def check_guess(letter)
+    if word.include?(letter)
+      guesses << letter
+    else
+      wrong_guesses << letter
+    end
+  end
+
+  def number_of_wrong_guesses
+    wrong_guesses.length
+  end
+
+  def valid_guess?(letter)
+    letter =~ /^[a-z]$/i
+  end
 end
